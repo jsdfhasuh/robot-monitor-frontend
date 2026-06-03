@@ -15,6 +15,7 @@ import { alarmRecords, cameraRecords, configVersions, dashboardKpi, detectTasks,
 import { logRuntimeKeypointSummary } from '../utils/keypointLogger'
 
 const MOCK = import.meta.env.VITE_USE_MOCK !== 'false'
+export const isMockMode = MOCK
 const wait = (ms = 250) => new Promise((resolve) => setTimeout(resolve, ms))
 
 function normalizeList(raw: any): any[] {
@@ -387,6 +388,33 @@ export async function getSystemHealth(): Promise<SystemHealth> {
   if (MOCK) { await wait(); return { ok: true, status: 'ok', message: 'mock' } }
   const data = unwrapAxiosData<any>(await http.get('/system/health'))
   return { ok: data?.ok ?? true, status: data?.status, message: data?.message, version: data?.version, raw: data }
+}
+
+export async function checkBackendConnection(timeout = 3000): Promise<SystemHealth> {
+  if (MOCK) {
+    await wait(80)
+    return { ok: true, status: 'mock', message: '当前为 Mock 模式，未检测真实后端。' }
+  }
+  try {
+    const data = unwrapAxiosData<any>(await http.get('/system/health', { timeout }))
+    const status = String(data?.status || '').toLowerCase()
+    const healthyStatus = !status || ['ok', 'healthy', 'up', 'running'].includes(status)
+    const ok = data?.ok === false ? false : healthyStatus
+    return {
+      ok,
+      status: data?.status || (ok ? 'ok' : 'error'),
+      message: data?.message || (ok ? '后端连接正常' : '后端健康检查异常'),
+      version: data?.version,
+      raw: data
+    }
+  } catch (error: any) {
+    return {
+      ok: false,
+      status: 'error',
+      message: error?.message || '后端连接失败',
+      raw: error
+    }
+  }
 }
 
 export async function getSystemDiagnostics(): Promise<SystemDiagnostics> {

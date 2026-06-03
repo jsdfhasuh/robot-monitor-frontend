@@ -15,6 +15,13 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: Inter,
 .aside-footer { margin-top: auto; padding: 16px 20px; color: var(--muted); font-size: 13px; border-top: 1px solid var(--border); }
 .app-header { height: 64px; background: #fff; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; font-weight: 700; }
 .header-right { display: flex; align-items: center; gap: 16px; color: var(--muted); font-weight: 500; }
+.backend-status { cursor: pointer; user-select: none; }
+.status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 999px; margin-right: 6px; background: #94a3b8; }
+.status-dot.ok { background: #16a34a; }
+.status-dot.mock { background: #f59e0b; }
+.status-dot.error { background: #dc2626; }
+.status-dot.checking { background: #64748b; animation: pulse-dot 1.2s ease-in-out infinite; }
+@keyframes pulse-dot { 0%, 100% { opacity: .45; } 50% { opacity: 1; } }
 .app-main { padding: 18px 22px 88px; }
 .page-grid { display: grid; gap: 14px; }
 .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; box-shadow: 0 8px 22px rgba(15, 23, 42, .04); }
