@@ -14,7 +14,14 @@
         <el-table-column label="持续时间" width="120"><template #default="{ row }">{{ row.duration_seconds }}s</template></el-table-column>
         <el-table-column prop="reason" label="判断原因" min-width="320" show-overflow-tooltip />
         <el-table-column label="处理状态" width="110"><template #default="{ row }"><el-tag :type="statusType(row.status)">{{ statusText(row.status) }}</el-tag></template></el-table-column>
-        <el-table-column label="操作" width="170" fixed="right"><template #default="{ row }"><el-button size="small" @click="detail(row)">详情</el-button><el-button size="small" type="success" plain :disabled="row.status==='resolved'" @click="resolve(row)">标记处理</el-button></template></el-table-column>
+        <el-table-column label="操作" width="260" fixed="right">
+          <template #default="{ row }">
+            <el-button size="small" @click="detail(row)">详情</el-button>
+            <el-button size="small" type="success" plain :disabled="row.status==='resolved'" @click="resolve(row)">处理</el-button>
+            <el-button size="small" type="warning" plain :disabled="row.false_alarm" @click="falseAlarm(row)">误报</el-button>
+            <el-button size="small" type="danger" plain :disabled="row.status==='resolved'" @click="close(row)">关闭</el-button>
+          </template>
+        </el-table-column>
       </el-table>
     </div>
 
@@ -26,8 +33,12 @@
         <el-descriptions-item label="机器人">{{ current.robot_name }}</el-descriptions-item>
         <el-descriptions-item label="事件类型">{{ eventText(current.type) }}</el-descriptions-item>
         <el-descriptions-item label="持续时间">{{ current.duration_seconds }}s</el-descriptions-item>
+        <el-descriptions-item label="处理备注" :span="2">{{ current.remark || '-' }}</el-descriptions-item>
         <el-descriptions-item label="判断原因" :span="2">{{ current.reason }}</el-descriptions-item>
       </el-descriptions>
+      <div v-if="current?.annotated_snapshot_url || current?.snapshot_url" style="margin-top:14px">
+        <img :src="current.annotated_snapshot_url || current.snapshot_url" style="width:100%; border-radius:8px; border:1px solid #e5e7eb" />
+      </div>
     </el-dialog>
   </div>
 </template>
@@ -35,7 +46,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import { getAlarmRecords, resolveAlarm } from '../api/platform'
+import { closeAlarm, getAlarmRecords, markFalseAlarm, resolveAlarm } from '../api/platform'
 import type { AlarmRecord } from '../types/platform'
 
 const rows = ref<AlarmRecord[]>([])
@@ -43,14 +54,16 @@ const filter = ref<'all' | AlarmRecord['status']>('all')
 const detailVisible = ref(false)
 const current = ref<AlarmRecord | null>(null)
 const filteredRows = computed(() => filter.value === 'all' ? rows.value : rows.value.filter((item) => item.status === filter.value))
-function eventType(type: AlarmRecord['type']) { return type === 'STOPPED' ? 'danger' : type === 'OFFLINE' ? 'warning' : type === 'ERROR' ? 'danger' : 'success' }
-function eventText(type: AlarmRecord['type']) { return type === 'STOPPED' ? '确认停机' : type === 'OFFLINE' ? '摄像头离线' : type === 'ERROR' ? '检测异常' : '恢复运行' }
+function eventType(type: AlarmRecord['type']) { return type === 'STOPPED' ? 'danger' : type === 'OFFLINE' ? 'warning' : type === 'UNKNOWN' ? 'info' : 'success' }
+function eventText(type: AlarmRecord['type']) { return type === 'STOPPED' ? '确认停机' : type === 'OFFLINE' ? '摄像头离线' : type === 'UNKNOWN' ? '检测未知' : '恢复运行' }
 function levelType(level: AlarmRecord['level']) { return level === 'critical' ? 'danger' : level === 'warning' ? 'warning' : 'info' }
 function levelText(level: AlarmRecord['level']) { return level === 'critical' ? '严重' : level === 'warning' ? '警告' : '信息' }
 function statusType(status: AlarmRecord['status']) { return status === 'resolved' ? 'success' : status === 'processing' ? 'warning' : 'danger' }
 function statusText(status: AlarmRecord['status']) { return status === 'resolved' ? '已处理' : status === 'processing' ? '处理中' : '待处理' }
 function detail(row: AlarmRecord) { current.value = row; detailVisible.value = true }
 async function resolve(row: AlarmRecord) { await resolveAlarm(row.id); row.status = 'resolved'; ElMessage.success('已标记处理') }
+async function falseAlarm(row: AlarmRecord) { await markFalseAlarm(row.id, true, '前端标记误报'); row.false_alarm = true; ElMessage.success('已标记误报') }
+async function close(row: AlarmRecord) { await closeAlarm(row.id); row.status = 'resolved'; ElMessage.success('事件已关闭') }
 async function load() { rows.value = await getAlarmRecords() }
 onMounted(load)
 </script>

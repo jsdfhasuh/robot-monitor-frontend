@@ -1,4 +1,4 @@
-import type { AppSettings, CameraOption, CameraRoiPayload, RuntimeDebugResult } from '../types/settings'
+import type { AppSettings, CameraOption, CameraRoiPayload, CameraRulePayload, RuleTemplate, RuntimeDebugResult } from '../types/settings'
 
 export const cameraOptions: CameraOption[] = [
   { id: 'cam_001', name: 'CAM01 - 产线1_机械臂', line: '产线1' },
@@ -121,3 +121,42 @@ export const defaultDebugResult: RuntimeDebugResult = {
     { index: 5, name: 'fixture', x: 1040, y: 590, confidence: 0.42, delta_px: 1.2, moving: false, in_roi: false }
   ]
 }
+
+export const defaultCameraRule: CameraRulePayload = {
+  camera_id: 'cam_001',
+  numeric_camera_id: 1,
+  detector_type: 'yolo_pose',
+  rule: {
+    motion_threshold: 4,
+    stop_seconds: 30,
+    unknown_seconds: 10,
+    confirm_frames: 2,
+    status_hold_seconds: 1
+  },
+  tracker: {
+    movement_score: 'keypoint_mean_step',
+    window_seconds: 30,
+    min_step_px: 1.5
+  },
+  current: {
+    status: 'STOPPED',
+    message: 'mock: 关键点平均位移低于阈值，已进入停机状态。',
+    motion_distance: 1.2,
+    rule_detail: {},
+    tracker: {}
+  },
+  config_version: 3,
+  updated_at: '2026-06-01T10:00:00'
+}
+
+export const defaultRuleTemplates: RuleTemplate[] = [
+  {
+    id: 'tpl_yolo_pose_stop',
+    name: '机器人关键点停机规则',
+    description: '适用于 YOLO Pose 关键点检测，使用关键点平均步长判断停机。',
+    detector_type: 'yolo_pose',
+    rule: structuredClone(defaultCameraRule.rule),
+    tracker: structuredClone(defaultCameraRule.tracker),
+    created_at: '2026-06-01T10:00:00'
+  }
+]

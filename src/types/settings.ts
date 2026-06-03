@@ -1,7 +1,16 @@
-export type DetectorType = 'motion' | 'yolo_object' | 'yolo_pose' | 'hybrid'
+export type DetectorType = 'motion' | 'aruco' | 'yolo' | 'yolo_pose'
 export type RoiType = 'polygon' | 'rectangle'
 export type RoiFilterMode = 'disabled' | 'filter_keypoints' | 'filter_bbox'
-export type RobotState = 'RUNNING' | 'IDLE' | 'STOPPED' | 'OFFLINE' | 'ERROR'
+export type RobotState = 'RUNNING' | 'IDLE' | 'STOPPED' | 'OFFLINE' | 'UNKNOWN'
+export type MovementScore =
+  | 'total_displacement'
+  | 'avg_speed'
+  | 'max_step'
+  | 'net_displacement'
+  | 'keypoint_mean_step'
+  | 'keypoint_max_step'
+  | 'angle_change'
+  | 'raw'
 
 export interface Point {
   x: number
@@ -28,9 +37,13 @@ export interface RoiConfig {
 
 export interface CameraRoiPayload {
   camera_id: string | number
+  numeric_camera_id?: number
+  image_width?: number
+  image_height?: number
   roi_filter_mode: RoiFilterMode
   rois: RoiConfig[]
   exclude_zones: RoiConfig[]
+  pixel_roi?: [number, number, number, number] | null
 }
 
 export interface DetectSettings {
@@ -104,6 +117,51 @@ export interface RuntimeDebugResult {
 
 export interface CameraOption {
   id: string | number
+  numeric_id?: number
   name: string
   line: string
+}
+
+export interface CameraStopRule {
+  motion_threshold: number
+  stop_seconds: number
+  unknown_seconds: number
+  confirm_frames: number
+  status_hold_seconds: number
+}
+
+export interface CameraTrackerRule {
+  movement_score: MovementScore
+  window_seconds: number
+  min_step_px: number
+}
+
+export interface CameraRuleCurrent {
+  status: RobotState
+  message: string
+  motion_distance: number
+  rule_detail: Record<string, unknown>
+  tracker: Record<string, unknown>
+}
+
+export interface CameraRulePayload {
+  camera_id: string | number
+  numeric_camera_id?: number
+  detector_type: DetectorType
+  rule: CameraStopRule
+  tracker: CameraTrackerRule
+  current: CameraRuleCurrent
+  config_version: number
+  updated_at: string
+}
+
+export interface RuleTemplate {
+  id: string | number
+  name: string
+  description: string
+  detector_type: DetectorType
+  rule: CameraStopRule
+  tracker: CameraTrackerRule
+  created_at?: string
+  updated_at?: string
 }

@@ -32,12 +32,12 @@ export function backendPath(path: string) {
 
 export function getCameraStreamUrl(cameraId: string | number, annotated = false, fps = 8, quality = 80) {
   if (MOCK) return mockSnapshot
-  return backendPath(`/api/cameras/${cameraId}/stream.mjpg?annotated=${annotated}&fps=${fps}&quality=${quality}`)
+  return backendPath(`/stream/cameras/${cameraId}/mjpeg?annotated=${annotated}&fps=${fps}&quality=${quality}`)
 }
 
 export function getCameraFrameUrl(cameraId: string | number, annotated = false) {
   if (MOCK) return mockSnapshot
-  return backendPath(`/api/cameras/${cameraId}/frame.jpg?annotated=${annotated}&t=${Date.now()}`)
+  return backendPath(`/stream/cameras/${cameraId}/snapshot?annotated=${annotated}&t=${Date.now()}`)
 }
 
 export function getMjpegStreamUrl(cameraId: string | number) {
@@ -62,4 +62,14 @@ export function getHlsStreamUrl(_cameraId: string | number) {
 
 export function getStreamInfoUrl(cameraId: string | number) {
   return backendPath(`/api/cameras/${cameraId}/stream-info`)
+}
+
+export function getCoreCameraStreamUrl(cameraId: string | number, annotated = false, fps = 8, quality = 80) {
+  if (MOCK) return mockSnapshot
+  return backendPath(`/api/cameras/${cameraId}/stream.mjpg?annotated=${annotated}&fps=${fps}&quality=${quality}`)
+}
+
+export function getCoreCameraFrameUrl(cameraId: string | number, annotated = false) {
+  if (MOCK) return mockSnapshot
+  return backendPath(`/api/cameras/${cameraId}/frame.jpg?annotated=${annotated}&t=${Date.now()}`)
 }

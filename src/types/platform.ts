@@ -9,6 +9,7 @@ export interface DashboardKpi {
 
 export interface RobotRuntimeCard {
   camera_id: string | number
+  numeric_camera_id?: number
   camera_name: string
   robot_id: string
   robot_name: string
@@ -29,29 +30,47 @@ export interface RobotRuntimeCard {
 
 export interface AlarmRecord {
   id: string
+  camera_id?: string | number
   time: string
   camera_name: string
   robot_name: string
-  type: 'STOPPED' | 'OFFLINE' | 'ERROR' | 'RECOVERED'
+  type: 'STOPPED' | 'OFFLINE' | 'UNKNOWN' | 'RECOVERED'
   level: 'info' | 'warning' | 'critical'
   duration_seconds: number
   status: 'pending' | 'processing' | 'resolved'
   reason: string
   snapshot_url?: string
+  annotated_snapshot_url?: string
+  recovery_snapshot_url?: string
+  recovery_annotated_url?: string
+  clip_url?: string
+  handled?: boolean
+  false_alarm?: boolean
+  remark?: string
 }
 
 export interface CameraRecord {
   id: string | number
+  numeric_id?: number
   name: string
+  area?: string
   line: string
+  location?: string
   robot_id: string
   robot_name: string
   rtsp_url: string
+  rtsp_url_masked?: string
   enabled: boolean
   status: 'online' | 'offline' | 'error'
+  runtime_state?: RobotState
   last_online: string
   fps_limit?: number
   roi?: [number, number, number, number] | null
+  stream_urls?: {
+    mjpeg?: string
+    mjpeg_annotated?: string
+    snapshot?: string
+  }
   detector_type?: DetectorType
   detector_config?: Record<string, any>
   motion_threshold?: number
@@ -62,7 +81,8 @@ export interface CameraRecord {
 export interface DetectTaskRecord {
   id: string | number
   name: string
-  camera_id: string | number | number
+  camera_id: string | number
+  numeric_id?: number
   camera_name: string
   robot_id: string
   robot_name: string
@@ -86,4 +106,50 @@ export interface ConfigVersionRecord {
   detector_type: DetectorType
   roi_count: number
   keypoint_count: number
+}
+
+export interface ModelRecord {
+  id: number
+  name: string
+  file_name: string
+  file_path: string
+  model_type: DetectorType
+  model_family?: string
+  input_size?: number
+  class_count?: number
+  num_keypoints?: number
+  labels?: string[] | null
+  metadata?: Record<string, unknown> | null
+  file_exists?: boolean
+  size_bytes?: number
+}
+
+export interface WorkerStatusRecord {
+  camera_id: string | number
+  numeric_camera_id?: number
+  camera_name?: string
+  running?: boolean
+  state?: RobotState
+  fps?: number
+  last_error?: string
+  rtsp_connected?: boolean
+  updated_at?: string
+  raw?: unknown
+}
+
+export interface SystemHealth {
+  ok?: boolean
+  status?: string
+  message?: string
+  version?: string
+  raw?: unknown
+}
+
+export interface SystemDiagnostics {
+  health?: SystemHealth
+  self_check?: Record<string, unknown>
+  detectors?: unknown[]
+  streams?: unknown
+  storage?: Record<string, unknown>
+  workers?: WorkerStatusRecord[]
 }

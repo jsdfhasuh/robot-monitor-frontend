@@ -5,10 +5,13 @@
       <el-menu :default-active="activeMenu" router class="side-menu">
         <el-menu-item index="/dashboard">实时监控</el-menu-item>
         <el-menu-item index="/debug/keypoints">标定与调试</el-menu-item>
+        <el-menu-item index="/rules">规则面板</el-menu-item>
         <el-menu-item index="/cameras">摄像头管理</el-menu-item>
         <el-menu-item index="/tasks">检测任务</el-menu-item>
         <el-menu-item index="/alarms">告警中心</el-menu-item>
+        <el-menu-item index="/models">模型管理</el-menu-item>
         <el-menu-item index="/config-versions">配置版本</el-menu-item>
+        <el-menu-item index="/system">系统诊断</el-menu-item>
       </el-menu>
       <div class="aside-footer">前后端分离容器版</div>
     </el-aside>
@@ -44,10 +47,13 @@ const logDrawerVisible = ref(false)
 const titleMap: Record<string, string> = {
   '/dashboard': '实时监控 / 机器人运行状态',
   '/debug/keypoints': '标定与调试 / 关节点调试与 ROI 标定',
+  '/rules': '规则面板 / 停机判断与模板',
   '/cameras': '摄像头管理 / RTSP 与机器人绑定',
   '/tasks': '检测任务 / YOLO Pose 规则',
   '/alarms': '告警中心 / 停机与离线记录',
+  '/models': '模型管理 / 上传与绑定',
   '/config-versions': '配置版本 / 发布与回滚',
+  '/system': '系统诊断 / 后端与 Worker',
   '/settings': '系统设置 / ROI 配置'
 }
 const pageTitle = computed(() => titleMap[route.path] || '机器人运行监控平台')

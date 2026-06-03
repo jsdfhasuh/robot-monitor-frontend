@@ -13,10 +13,13 @@
         <el-table-column label="启用" width="90"><template #default="{ row }"><el-switch v-model="row.enabled" /></template></el-table-column>
         <el-table-column label="状态" width="110"><template #default="{ row }"><el-tag :type="cameraType(row.status)">{{ cameraText(row.status) }}</el-tag></template></el-table-column>
         <el-table-column prop="last_online" label="最后在线" width="180" />
-        <el-table-column label="操作" width="220" fixed="right">
+        <el-table-column label="操作" width="340" fixed="right">
           <template #default="{ row }">
             <el-button size="small" @click="edit(row)">编辑</el-button>
-            <el-button size="small" type="primary" plain @click="test(row.id)">测试连接</el-button>
+            <el-button size="small" type="primary" plain @click="test(row)">测试</el-button>
+            <el-button size="small" type="success" plain @click="start(row)">启动</el-button>
+            <el-button size="small" type="warning" plain @click="stop(row)">停止</el-button>
+            <el-button size="small" type="danger" plain @click="remove(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -37,9 +40,9 @@
 </template>
 
 <script setup lang="ts">
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { onMounted, reactive, ref } from 'vue'
-import { getCameraRecords, saveCameraRecord, testCameraConnection } from '../api/platform'
+import { deleteCameraRecord, getCameraRecords, saveCameraRecord, startDetectTask, stopDetectTask, testCameraConnection } from '../api/platform'
 import type { CameraRecord } from '../types/platform'
 
 const rows = ref<CameraRecord[]>([])
@@ -57,9 +60,17 @@ async function save() {
   dialogVisible.value = false
   ElMessage.success('摄像头配置已保存')
 }
-async function test(id: string) {
-  const result = await testCameraConnection(id)
+async function test(row: CameraRecord) {
+  const result = await testCameraConnection(row)
   ElMessage[result.ok ? 'success' : 'error'](result.message)
+}
+async function start(row: CameraRecord) { await startDetectTask(row); ElMessage.success('摄像头 Worker 已启动'); await load() }
+async function stop(row: CameraRecord) { await stopDetectTask(row); ElMessage.success('摄像头 Worker 已停止'); await load() }
+async function remove(row: CameraRecord) {
+  await ElMessageBox.confirm(`确认删除摄像头「${row.name}」？后端会先停止 Worker。`, '删除摄像头', { type: 'warning' })
+  await deleteCameraRecord(row)
+  ElMessage.success('摄像头已删除')
+  await load()
 }
 async function load() { rows.value = await getCameraRecords() }
 onMounted(load)

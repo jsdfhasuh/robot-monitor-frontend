@@ -23,9 +23,9 @@
     <el-dialog v-model="dialogVisible" :title="form.id ? '编辑检测任务' : '新增检测任务'" width="720px">
       <el-form label-width="130px">
         <el-form-item label="任务名称"><el-input v-model="form.name" /></el-form-item>
-        <el-form-item label="摄像头"><el-input v-model="form.camera_name" placeholder="后端接入后可替换成摄像头下拉" /></el-form-item>
+        <el-form-item label="摄像头"><el-input v-model="form.camera_name" placeholder="当前检测任务映射到摄像头 Worker" /></el-form-item>
         <el-form-item label="机器人"><el-input v-model="form.robot_name" /></el-form-item>
-        <el-form-item label="检测模式"><el-select v-model="form.detector_type"><el-option label="YOLO Pose" value="yolo_pose" /><el-option label="传统运动检测" value="motion" /><el-option label="混合检测" value="hybrid" /></el-select></el-form-item>
+        <el-form-item label="检测模式"><el-select v-model="form.detector_type"><el-option label="YOLO Pose" value="yolo_pose" /><el-option label="YOLO 目标检测" value="yolo" /><el-option label="ArUco" value="aruco" /><el-option label="传统运动检测" value="motion" /></el-select></el-form-item>
         <el-form-item label="ROI 过滤模式"><el-select v-model="form.roi_filter_mode"><el-option label="不使用 ROI" value="disabled" /><el-option label="只统计 ROI 内关键点" value="filter_keypoints" /><el-option label="只统计 ROI 内目标框" value="filter_bbox" /></el-select></el-form-item>
         <el-form-item label="目标关键点"><el-select v-model="form.target_keypoints" multiple><el-option v-for="i in 6" :key="i-1" :label="`kp${i-1}`" :value="i-1" /></el-select></el-form-item>
         <el-form-item label="位移阈值"><el-input-number v-model="form.motion_threshold_px" :min="0" :max="100" /></el-form-item>
@@ -60,8 +60,8 @@ async function save() {
   dialogVisible.value = false
   ElMessage.success('检测任务已保存')
 }
-async function start(row: DetectTaskRecord) { await startDetectTask(row.camera_id); row.status = 'running'; ElMessage.success('检测 worker 已启动') }
-async function stop(row: DetectTaskRecord) { await stopDetectTask(row.camera_id); row.status = 'paused'; ElMessage.success('检测 worker 已停止') }
+async function start(row: DetectTaskRecord) { await startDetectTask(row); row.status = 'running'; ElMessage.success('检测 worker 已启动') }
+async function stop(row: DetectTaskRecord) { await stopDetectTask(row); row.status = 'paused'; ElMessage.success('检测 worker 已停止') }
 async function load() { rows.value = await getDetectTasks() }
 onMounted(load)
 </script>

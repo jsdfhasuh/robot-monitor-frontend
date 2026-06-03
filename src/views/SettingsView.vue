@@ -6,13 +6,29 @@
     <div class="card">
       <div class="card-title">多 ROI 配置</div>
       <div class="two-col">
-        <RoiEditor v-model:rois="roiPayload.rois" :active-roi-id="activeRoiId" :camera-label="selectedCameraLabel" :camera-id="cameraId" />
+        <RoiEditor
+          v-model:rois="roiPayload.rois"
+          :active-roi-id="activeRoiId"
+          :camera-label="selectedCameraLabel"
+          :camera-id="String(cameraId)"
+          :snapshot-url="localImageUrl || undefined"
+          @image-size="onRoiImageSize"
+        />
         <div>
           <el-form label-width="120px">
             <el-form-item label="摄像头选择">
               <el-select v-model="cameraId" @change="loadRoi" style="width:100%">
                 <el-option v-for="c in cameras" :key="c.id" :label="c.name" :value="c.id" />
               </el-select>
+            </el-form-item>
+            <el-form-item label="绘制底图">
+              <div class="roi-image-tools">
+                <el-upload :auto-upload="false" :show-file-list="false" accept="image/*" :on-change="handleLocalImageChange">
+                  <el-button>导入本地图片</el-button>
+                </el-upload>
+                <el-button v-if="localImageUrl" plain @click="clearLocalImage">使用后端截图</el-button>
+                <span v-if="localImageName" class="small-muted">{{ localImageName }} · {{ localImageSizeText }}</span>
+              </div>
             </el-form-item>
             <el-form-item label="ROI过滤模式">
               <el-radio-group v-model="roiPayload.roi_filter_mode">
@@ -63,8 +79,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { ElMessage } from 'element-plus'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { ElMessage, type UploadFile } from 'element-plus'
 import SettingsForms from '../components/SettingsForms.vue'
 import KeypointRuleTable from '../components/KeypointRuleTable.vue'
 import RoiEditor from '../components/RoiEditor.vue'
@@ -74,14 +90,50 @@ import { applySettings, getCameraRoi, getCameras, getSettings, resetSettings, sa
 const settings = ref<AppSettings>()
 const roiPayload = ref<CameraRoiPayload>()
 const cameras = ref<CameraOption[]>([])
-const cameraId = ref('cam_001')
+const cameraId = ref<string | number>('cam_001')
 const activeRoiId = ref('')
-const selectedCameraLabel = computed(() => cameras.value.find(c => c.id === cameraId.value)?.name || cameraId.value)
+const localImageUrl = ref('')
+const localImageName = ref('')
+const localImageWidth = ref(0)
+const localImageHeight = ref(0)
+const selectedCameraLabel = computed(() => cameras.value.find(c => String(c.id) === String(cameraId.value))?.name || String(cameraId.value))
 const activeRoi = computed(() => roiPayload.value?.rois.find(r => r.id === activeRoiId.value))
+const localImageSizeText = computed(() => localImageWidth.value && localImageHeight.value ? `${localImageWidth.value} × ${localImageHeight.value}` : '-')
 
 async function loadRoi() {
+  clearLocalImage()
   roiPayload.value = await getCameraRoi(cameraId.value)
   activeRoiId.value = roiPayload.value.rois[0]?.id || ''
+}
+function revokeLocalImage() {
+  if (localImageUrl.value) URL.revokeObjectURL(localImageUrl.value)
+}
+function clearLocalImage() {
+  revokeLocalImage()
+  localImageUrl.value = ''
+  localImageName.value = ''
+  localImageWidth.value = 0
+  localImageHeight.value = 0
+}
+function handleLocalImageChange(file: UploadFile) {
+  const raw = file.raw
+  if (!raw) return
+  if (!raw.type.startsWith('image/')) {
+    ElMessage.error('请选择图片文件')
+    return
+  }
+  revokeLocalImage()
+  localImageUrl.value = URL.createObjectURL(raw)
+  localImageName.value = raw.name
+}
+function onRoiImageSize(size: { width: number; height: number }) {
+  if (!roiPayload.value) return
+  roiPayload.value.image_width = size.width
+  roiPayload.value.image_height = size.height
+  if (localImageUrl.value) {
+    localImageWidth.value = size.width
+    localImageHeight.value = size.height
+  }
 }
 function addRoi() {
   if (!roiPayload.value) return
@@ -102,5 +154,15 @@ async function saveRoi() { if (!roiPayload.value) return; await saveCameraRoi(ca
 async function saveAll() { if (!settings.value) return; await saveSettings(settings.value); ElMessage.success('配置已保存') }
 async function applyAll() { if (!settings.value) return; await applySettings(settings.value); ElMessage.success('配置已保存并应用') }
 async function resetAll() { settings.value = await resetSettings(); ElMessage.success('已恢复默认配置') }
-onMounted(async () => { cameras.value = await getCameras(); settings.value = await getSettings(); await loadRoi() })
+onMounted(async () => {
+  cameras.value = await getCameras()
+  cameraId.value = cameras.value[0]?.id || cameraId.value
+  settings.value = await getSettings()
+  await loadRoi()
+})
+onUnmounted(clearLocalImage)
 </script>
+
+<style scoped>
+.roi-image-tools { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+</style>

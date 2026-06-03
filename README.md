@@ -1,22 +1,24 @@
 # 机器人运行监控平台 - 前端
 
-这是适配当前后端实际接口的纯前端项目。前端容器只负责页面展示、Nginx 静态资源、`/api` 代理和 `/ws` 代理；RTSP、截图、MJPEG 视频流、YOLO Pose 推理、状态判断和事件记录都由后端提供。
+这是适配当前后端实际接口的纯前端项目。前端容器只负责页面展示、Nginx 静态资源、`/api`、`/stream`、`/data` 和 `/ws` 代理；RTSP、截图、MJPEG 视频流、YOLO Pose 推理、状态判断和事件记录都由后端提供。
 
 ## 当前适配状态
 
-本版本已按后端工程师给出的《前端工程调整说明：适配当前后端实际接口》调整。
+本版本已按后端 `FRONTEND_INTEGRATION.md` 的真实接口调整。
 
 核心变化：
 
 ```text
 1. 响应格式兼容 ok/data/message，不再只依赖 code === 0
-2. 视频流改为 /api/cameras/{id}/stream.mjpg
-3. 截图改为 /api/cameras/{id}/frame.jpg
-4. 实时状态改为 GET /api/status
+2. 视频流优先使用 /stream/cameras/{id}/mjpeg
+3. 截图优先使用 /stream/cameras/{id}/snapshot
+4. 实时状态改为 GET /api/runtime/status，WebSocket 使用 /ws/status
 5. 告警中心改为事件中心 GET /api/events
 6. 检测任务改为摄像头 worker：/api/cameras/{id}/start 和 /stop
-7. ROI 保存先降级为后端单矩形 roi: [x1, y1, x2, y2]
-8. 配置版本页先改为配置导入/导出能力占位
+7. ROI 改为 GET/POST /api/cameras/{id}/roi
+8. Settings 改为 /api/settings、/save、/apply、/reset
+9. 新增模型管理和系统诊断入口
+10. 新增规则面板，接入摄像头规则、复制规则和规则模板接口
 ```
 
 ## 已完成页面
@@ -24,10 +26,13 @@
 ```text
 /dashboard           实时监控
 /debug/keypoints     标定与调试：关节点调试 + ROI 标定
+/rules               规则面板：摄像头停机规则、复制规则、规则模板
 /cameras             摄像头管理
 /tasks               检测任务管理，当前映射到 camera worker
 /alarms              告警中心，当前映射到 events 事件中心
+/models              模型管理：上传、注册、绑定模型
 /config-versions     配置导入/导出占位
+/system              系统诊断：健康、自检、Worker、存储
 /settings            系统设置 + ROI 配置
 ```
 
@@ -115,7 +120,7 @@ robot-backend
 
 ## Nginx 代理
 
-当前后端视频流已经在 `/api/cameras/{id}/stream.mjpg` 下，所以前端主要需要：
+当前后端视频流推荐使用 `/stream/cameras/{id}/mjpeg`，核心 `/api/cameras/{id}/stream.mjpg` 仍作为回退路径：
 
 ```nginx
 location /api/ {
@@ -128,9 +133,17 @@ location /ws/ {
     proxy_set_header Upgrade $http_upgrade;
     proxy_set_header Connection "upgrade";
 }
+
+location /stream/ {
+    proxy_pass http://robot-backend:8000/stream/;
+}
+
+location /data/ {
+    proxy_pass http://robot-backend:8000/data/;
+}
 ```
 
-项目里仍保留 `/stream/` 代理作为兼容预留，但当前前端代码不再依赖 `/stream/...`。
+项目里已配置 `/stream/` 和 `/data/` 代理，分别用于 MJPEG/snapshot 和事件图片。
 
 ## 当前后端接口映射
 
@@ -149,10 +162,10 @@ POST   /api/cameras/{id}/test
 ### 视频流与截图
 
 ```text
-GET /api/cameras/{id}/stream.mjpg?annotated=false&fps=8&quality=80
-GET /api/cameras/{id}/stream.mjpg?annotated=true&fps=8&quality=80
-GET /api/cameras/{id}/frame.jpg?annotated=false
-GET /api/cameras/{id}/frame.jpg?annotated=true
+GET /stream/cameras/{id}/mjpeg?annotated=false&fps=8&quality=80
+GET /stream/cameras/{id}/mjpeg?annotated=true&fps=8&quality=80
+GET /stream/cameras/{id}/snapshot?annotated=false
+GET /stream/cameras/{id}/snapshot?annotated=true
 GET /api/cameras/{id}/stream-info
 GET /api/system/streams
 ```
@@ -167,37 +180,19 @@ getCameraFrameUrl(cameraId, annotated)
 ### 实时状态
 
 ```text
-GET /api/status
+GET /api/runtime/status
 WS  /ws/status
 ```
 
-前端当前已接 `GET /api/status`，`/ws/status` 作为下一步联调项。
+前端当前已接 `GET /api/runtime/status`，并在 dashboard 接入 `/ws/status` 推送刷新。
 
 ### ROI 标定
 
-当前后端 ROI 是单矩形：
-
-```json
-[100, 80, 900, 600]
-```
-
-前端虽然仍可画多边形，但保存时会临时降级：
+当前使用独立 ROI 接口：
 
 ```text
-多边形 ROI -> 外接矩形 -> PUT /api/cameras/{id} 的 roi 字段
-```
-
-请求示例：
-
-```http
-PUT /api/cameras/{id}
-Content-Type: application/json
-```
-
-```json
-{
-  "roi": [100, 80, 900, 600]
-}
+GET  /api/cameras/{id}/roi
+POST /api/cameras/{id}/roi
 ```
 
 ### 关节点调试
@@ -253,10 +248,13 @@ PUT /api/events/{id}/close
 
 ### 设置页
 
-当前没有完整全局 settings 接口，所以前端先按摄像头配置保存：
+当前 settings 使用：
 
 ```text
-PUT /api/cameras/{id}
+GET  /api/settings
+POST /api/settings/save
+POST /api/settings/apply
+POST /api/settings/reset
 ```
 
 主要字段：
@@ -280,6 +278,58 @@ PUT /api/cameras/{id}
 }
 ```
 
+### 规则面板
+
+规则面板位于 `/rules`，用于配置每路摄像头的机器人停机判断规则。
+
+当前已接入：
+
+```text
+GET  /api/cameras/{id}/rule
+PUT  /api/cameras/{id}/rule
+POST /api/cameras/{id}/rule/copy
+GET  /api/rule-templates
+POST /api/rule-templates
+GET  /api/rule-templates/{template_id}
+PUT  /api/rule-templates/{template_id}
+DELETE /api/rule-templates/{template_id}
+POST /api/rule-templates/{template_id}/apply
+```
+
+保存摄像头规则时全量提交：
+
+```json
+{
+  "rule": {
+    "motion_threshold": 4,
+    "stop_seconds": 30,
+    "unknown_seconds": 10,
+    "confirm_frames": 2,
+    "status_hold_seconds": 1.0
+  },
+  "tracker": {
+    "movement_score": "keypoint_mean_step",
+    "window_seconds": 30,
+    "min_step_px": 1.5
+  }
+}
+```
+
+`movement_score` 支持：
+
+```text
+total_displacement
+avg_speed
+max_step
+net_displacement
+keypoint_mean_step
+keypoint_max_step
+angle_change
+raw
+```
+
+复制规则只复制 `rule` 和 `tracker`，不会复制 RTSP、模型、ROI 或摄像头名称。保存规则、复制规则和应用模板后，后端会递增 `config_version`，Worker 会热更新。
+
 ### 配置导入导出
 
 当前后端可用：
@@ -289,7 +339,7 @@ GET  /api/config/export
 POST /api/config/import
 ```
 
-完整版本列表、对比、回滚等后续等后端补接口后再接。
+完整版本列表、对比、回滚等后续等后端补齐接口后再接。
 
 ## 项目结构
 
@@ -297,8 +347,8 @@ POST /api/config/import
 src/
 ├── api/
 │   ├── http.ts        # axios + ok/data/message 兼容层
-│   ├── stream.ts      # stream.mjpg / frame.jpg 地址封装
-│   ├── settings.ts    # 设置、ROI、关节点调试接口
+│   ├── stream.ts      # MJPEG / snapshot 地址封装
+│   ├── settings.ts    # 设置、ROI、规则面板、关节点调试接口
 │   └── platform.ts    # 摄像头、状态、任务、事件、配置接口
 ├── components/
 │   ├── RoiEditor.vue
@@ -308,17 +358,16 @@ src/
 ├── router/
 ├── styles/
 ├── types/
-└── views/
+└── views/             # 页面目录，包含 Dashboard、Rules、Models、System 等页面
 ```
 
 ## 当前前端进度
 
 ```text
-完整平台前端：90%
-██████████████████░░ 90%
+完整平台前端：真实后端接口适配版
 ```
 
-剩余主要是：`/ws/status` 实时推送联调、真实后端字段微调、登录权限、生产环境细节优化。
+剩余主要是：真实现场数据联调、登录权限、生产环境细节优化、按后端后续版本补配置版本完整接口。
 
 
 ## 前端运行日志
@@ -460,4 +509,3 @@ delta_px / delta / displacement
 moving
 in_roi / inside_roi
 ```
-

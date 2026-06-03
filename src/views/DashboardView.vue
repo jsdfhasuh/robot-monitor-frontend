@@ -22,7 +22,7 @@
             <img v-if="card.state !== 'OFFLINE'" class="backend-video-img" :src="videoSrc(card)" :alt="card.camera_name" @load="onVideoLoad(card.camera_id)" @error="onVideoError(card.camera_id)" />
             <div v-if="videoErrors[card.camera_id] && card.state !== 'OFFLINE'" class="stream-mask">
               <div>视频流加载失败</div>
-              <small>请确认后端已提供 /api/cameras/{{ card.camera_id }}/stream.mjpg</small>
+              <small>请确认后端已提供 /stream/cameras/{{ card.camera_id }}/mjpeg</small>
             </div>
             <div class="roi roi-a"></div><div class="roi roi-b"></div>
             <div class="video-toolbar">后端视频流 ｜ {{ card.stream_type || 'mjpeg' }} ｜ {{ card.fps }} FPS</div>
@@ -58,10 +58,11 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { onMounted, onUnmounted, reactive, ref } from 'vue'
 import { getDashboardOverview } from '../api/platform'
 import { getMjpegStreamUrl, getSnapshotUrl } from '../api/stream'
 import { logger } from '../utils/logger'
+import { createStatusWebSocket } from '../utils/wsStatus'
 import type { AlarmRecord, DashboardKpi, RobotRuntimeCard } from '../types/platform'
 import type { RobotState } from '../types/settings'
 
@@ -69,6 +70,16 @@ const kpi = reactive<DashboardKpi>({ online_cameras: 0, running_robots: 0, stopp
 const cards = ref<RobotRuntimeCard[]>([])
 const alarms = ref<AlarmRecord[]>([])
 const videoErrors = reactive<Record<string, boolean>>({})
+let lastWsRefresh = 0
+const statusWs = createStatusWebSocket({
+  onMessage: () => {
+    const now = Date.now()
+    if (now - lastWsRefresh < 1500) return
+    lastWsRefresh = now
+    load()
+  },
+  onFallbackPoll: () => load()
+})
 
 function videoSrc(card: RobotRuntimeCard) {
   return card.stream_url || (card.stream_type === 'mjpeg' ? getMjpegStreamUrl(card.camera_id) : getSnapshotUrl(card.camera_id))
@@ -105,5 +116,9 @@ async function load() {
     logger.error('system', '实时监控数据加载失败', error)
   }
 }
-onMounted(load)
+onMounted(async () => {
+  await load()
+  statusWs.connect()
+})
+onUnmounted(() => statusWs.close())
 </script>

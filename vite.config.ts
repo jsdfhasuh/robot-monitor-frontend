@@ -10,6 +10,14 @@ export default defineConfig({
         target: process.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000',
         changeOrigin: true
       },
+      '/stream': {
+        target: process.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000',
+        changeOrigin: true
+      },
+      '/data': {
+        target: process.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000',
+        changeOrigin: true
+      },
       '/ws': {
         target: process.env.VITE_BACKEND_WS || 'ws://127.0.0.1:8000',
         ws: true

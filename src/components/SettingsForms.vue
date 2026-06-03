@@ -3,7 +3,7 @@
     <div class="card">
       <div class="card-title">检测参数</div>
       <el-form label-width="128px" size="default">
-        <el-form-item label="检测模式"><el-select v-model="model.detect.detector_type"><el-option label="YOLO Pose" value="yolo_pose" /><el-option label="目标检测" value="yolo_object" /><el-option label="帧差检测" value="motion" /><el-option label="混合检测" value="hybrid" /></el-select></el-form-item>
+        <el-form-item label="检测模式"><el-select v-model="model.detect.detector_type"><el-option label="YOLO Pose" value="yolo_pose" /><el-option label="YOLO 目标检测" value="yolo" /><el-option label="ArUco" value="aruco" /><el-option label="帧差检测" value="motion" /></el-select></el-form-item>
         <el-form-item label="连续停机时间"><el-input-number v-model="model.detect.stop_duration_seconds" :min="1" /></el-form-item>
         <el-form-item label="运动阈值(px)"><el-input-number v-model="model.detect.motion_threshold_px" :min="1" /></el-form-item>
         <el-form-item label="最低置信度"><el-input-number v-model="model.detect.keypoint_conf_threshold" :min="0" :max="1" :step="0.05" /></el-form-item>

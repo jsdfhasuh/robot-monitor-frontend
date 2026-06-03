@@ -1,12 +1,12 @@
 <template>
-  <div class="roi-editor" ref="wrapRef">
-    <img class="scene" :src="resolvedImageUrl" @load="syncSize" @error="imageLoadError = true" />
+  <div class="roi-editor" ref="wrapRef" :style="editorStyle">
+    <img ref="imageRef" class="scene" :src="resolvedImageUrl" @load="onImageLoad" @error="imageLoadError = true" />
     <div v-if="imageLoadError" class="snapshot-error">
       <div>后端截图加载失败</div>
       <small>请确认 /stream/cameras/{{ cameraId || 'camera_id' }}/snapshot 可访问</small>
     </div>
     <canvas ref="canvasRef" class="overlay" @mousedown="onMouseDown" @mousemove="onMouseMove" @mouseup="onMouseUp" @mouseleave="dragging = null" @dblclick="finishCurrentRoi" />
-    <div class="video-toolbar">{{ cameraLabel }} ｜ 1920 × 1080 ｜ 25 FPS</div>
+    <div class="video-toolbar">{{ cameraLabel }} ｜ {{ imageSizeText }}</div>
     <div class="legend">
       <div><span style="background:#3b82f6"></span> 静止(≤2px)</div>
       <div><span style="background:#22c55e"></span> 轻微(2-5px)</div>
@@ -17,7 +17,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import type { RoiConfig, Point } from '../types/settings'
 import { getSnapshotUrl } from '../api/stream'
 
@@ -29,10 +29,14 @@ const props = defineProps<{
   snapshotUrl?: string
   debug?: boolean
 }>()
-const emit = defineEmits<{ 'update:rois': [value: RoiConfig[]] }>()
+const emit = defineEmits<{
+  'update:rois': [value: RoiConfig[]]
+  'image-size': [value: { width: number; height: number }]
+}>()
 
 const wrapRef = ref<HTMLDivElement>()
 const canvasRef = ref<HTMLCanvasElement>()
+const imageRef = ref<HTMLImageElement>()
 const fallbackImageUrl = 'data:image/svg+xml;utf8,' + encodeURIComponent(`
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">
   <rect width="1280" height="720" fill="#0f172a"/>
@@ -49,8 +53,23 @@ const fallbackImageUrl = 'data:image/svg+xml;utf8,' + encodeURIComponent(`
   </g>
 </svg>`)
 const imageLoadError = ref(false)
+const naturalWidth = ref(1280)
+const naturalHeight = ref(720)
 const resolvedImageUrl = computed(() => props.snapshotUrl || (props.cameraId ? getSnapshotUrl(props.cameraId) : fallbackImageUrl))
+const editorStyle = computed(() => ({ aspectRatio: `${naturalWidth.value} / ${naturalHeight.value}` }))
+const imageSizeText = computed(() => `${naturalWidth.value} × ${naturalHeight.value}`)
 const dragging = ref<{ roiId: string; pointIndex: number } | null>(null)
+
+function onImageLoad() {
+  const img = imageRef.value
+  imageLoadError.value = false
+  if (img?.naturalWidth && img?.naturalHeight) {
+    naturalWidth.value = img.naturalWidth
+    naturalHeight.value = img.naturalHeight
+    emit('image-size', { width: img.naturalWidth, height: img.naturalHeight })
+  }
+  nextTick(syncSize)
+}
 
 function syncSize() {
   const canvas = canvasRef.value
@@ -157,12 +176,13 @@ function finishCurrentRoi() { draw() }
 watch(() => [props.rois, props.activeRoiId, props.debug], () => nextTick(draw), { deep: true })
 watch(() => resolvedImageUrl.value, () => { imageLoadError.value = false; nextTick(syncSize) })
 onMounted(() => { syncSize(); window.addEventListener('resize', syncSize) })
+onUnmounted(() => window.removeEventListener('resize', syncSize))
 </script>
 
 <style scoped>
 .roi-editor { position: relative; width: 100%; aspect-ratio: 16/9; overflow: hidden; border-radius: 10px; background: #111827; border: 1px solid #d1d5db; }
 .scene, .overlay { position: absolute; inset: 0; width: 100%; height: 100%; }
-.scene { object-fit: cover; }
+.scene { object-fit: contain; background: #111827; }
 .overlay { cursor: crosshair; }
 .legend { position: absolute; left: 12px; bottom: 12px; background: rgba(0,0,0,.56); color: #fff; border-radius: 8px; padding: 8px 10px; font-size: 12px; line-height: 1.8; }
 .legend span { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; }
