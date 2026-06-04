@@ -137,6 +137,8 @@ yolo
 yolo_pose
 ```
 
+摄像头表单里 RTSP 用户名和密码只是前端辅助输入。保存时应合成完整 `rtsp_url`，后端接口仍只接收 `rtsp://user:pass@host:port/path` 这一类完整地址。
+
 ### 视频流和截图
 
 后端当前推荐 MJPEG，不要依赖 HLS，HLS 可能返回占位或 501。

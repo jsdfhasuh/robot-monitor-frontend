@@ -390,7 +390,7 @@ export async function getSystemHealth(): Promise<SystemHealth> {
   return { ok: data?.ok ?? true, status: data?.status, message: data?.message, version: data?.version, raw: data }
 }
 
-export async function checkBackendConnection(timeout = 3000): Promise<SystemHealth> {
+export async function checkBackendConnection(timeout = Number(import.meta.env.VITE_API_TIMEOUT || 15000)): Promise<SystemHealth> {
   if (MOCK) {
     await wait(80)
     return { ok: true, status: 'mock', message: '当前为 Mock 模式，未检测真实后端。' }

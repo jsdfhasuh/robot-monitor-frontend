@@ -159,6 +159,18 @@ POST   /api/cameras/{id}/test
 
 当前后端 camera.id 是数字 ID，前端已兼容数字 ID。
 
+新增摄像头时，前端提供 RTSP 用户名和密码辅助输入。后端仍只保存完整 `rtsp_url`，保存前会自动拼成：
+
+```text
+rtsp://username:password@host:port/path
+```
+
+例如：
+
+```text
+rtsp://admin:******@192.168.100.76:8554/cam1
+```
+
 ### 视频流与截图
 
 ```text
